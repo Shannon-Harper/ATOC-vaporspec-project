@@ -1,0 +1,39 @@
+[project]
+name = "vaporspec"
+version = "0.1.0"
+description = "A Python toolkit for atmospheric water vapor and infrared analysis"
+authors = [
+    { name = "Shannon-Harper McAlister", email = "shmc5205@colorado.edu" }
+]
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+
+dependencies = [
+    "numpy",
+    "pandas",
+    "xarray",
+    "matplotlib",
+    "seaborn",
+    "scipy",
+    "scikit-learn",
+    "cartopy",
+]
+
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Atmospheric Science",
+]
+
+[project.urls]
+Homepage = "https://github.com/Shannon-Harper/ATOC-vaporspec-project.git"
+Repository = "https://github.com/Shannon-Harper/ATOC-vaporspec-project.git"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages]
+find = { include = ["vaporspec"] }
