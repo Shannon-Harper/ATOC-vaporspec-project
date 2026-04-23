@@ -227,3 +227,36 @@ def humidity_binned_barplot(df, tmin=10, tmax=12):
     plt.title(f"Net LW Radiation for Low vs High Humidity ({tmin}–{tmax}°C)")
     plt.tight_layout()
     return fig
+
+
+
+
+# ============================================================
+# Contribution requested from other student
+# ============================================================
+
+
+def plot_diurnal_cycle(df, variable="strd"):
+    """
+    Plot the diurnal cycle (hourly mean) of a selected variable.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Input dataset containing a datetime index or a 'time' column.
+    variable : str, default "strd"
+        Column name of the variable to plot (e.g., "strd", "q_surface").
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+        The generated figure.
+    """
+    # TODO: Contributor will implement this function.
+    # Steps:
+    # 1. Call vaporspec.analysis.diurnal_cycle(df) to compute hourly means.
+    # 2. Create a 10x6 matplotlib figure.
+    # 3. Plot the hourly mean of the selected variable.
+    # 4. Label axes and add a title.
+    # 5. Return the figure.
+    pass

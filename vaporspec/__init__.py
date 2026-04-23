@@ -75,6 +75,7 @@ from .plotting import (
     scatter_net_lw_vs_q,
     scatter_lw_vs_q_surface_fit,
     humidity_binned_barplot,
+    plot_diurnal_cycle,
 )
 
 # Public API
@@ -127,6 +128,7 @@ __all__ = [
     "scatter_net_lw_vs_q",
     "scatter_lw_vs_q_surface_fit",
     "humidity_binned_barplot",
+    "plot_diurnal_cycle",
 
 ]
 
