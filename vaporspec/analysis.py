@@ -2,37 +2,32 @@
 """
 Atmospheric diagnostics and statistical tools for vaporspec.
 
-Includes:
-- LW↓ vs surface specific humidity
-- LW↓ vs 850 hPa specific humidity
-- LW↑ vs surface temperature
-- Net LW vs humidity
-- Humidity-binned comparisons
-- Regression tools
-- Correlation matrix
-- Monthly means
-- Diurnal cycle
-- Anomalies
-- Rolling smoothing
-- Cloud-mask diagnostics
+This module provides small, focused analysis functions used throughout
+the project, including:
+- simple linear regression tools
+- LW↓ and LW↑ relationships with humidity and temperature
+- humidity‑binned comparisons
+- cloud‑mask statistics
+- correlation matrices
+- monthly and diurnal averages
+- anomalies and smoothing
 """
 
 import numpy as np
-from sklearn.linear_model import LinearRegression
-from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LinearRegression   # simple linear regression model
+from sklearn.preprocessing import StandardScaler    # optional feature standardization
 
 
 
-
-# Generic Regression Tools
+# Regression tools
 
 def regression_xy(x, y):
-    """Simple linear regression y = a*x + b."""
-    x = np.array(x).reshape(-1, 1)
+    """Run a simple linear regression of y on x."""
+    x = np.array(x).reshape(-1, 1)                  # reshape for sklearn
     y = np.array(y)
 
-    model = LinearRegression().fit(x, y)
-    r2 = model.score(x, y)
+    model = LinearRegression().fit(x, y)            # fit regression model
+    r2 = model.score(x, y)                          # coefficient of determination
 
     return {
         "slope": model.coef_[0],
@@ -43,15 +38,15 @@ def regression_xy(x, y):
 
 
 def regression_multi(X, y, standardize=True):
-    """Multivariate regression."""
+    """Run a multivariate linear regression."""
     X = np.array(X)
     y = np.array(y)
 
     if standardize:
         scaler = StandardScaler()
-        X = scaler.fit_transform(X)
+        X = scaler.fit_transform(X)                 # standardize predictors
 
-    model = LinearRegression().fit(X, y)
+    model = LinearRegression().fit(X, y)            # fit regression model
     r2 = model.score(X, y)
 
     return {
@@ -63,20 +58,20 @@ def regression_multi(X, y, standardize=True):
 
 
 
-# Confidence Interval for Mean
+# Confidence interval helper
 
 def mean_ci(values, confidence=0.95):
-    """Mean + confidence interval."""
-    arr = np.array(values.dropna())
+    """Compute mean and confidence interval."""
+    arr = np.array(values.dropna())                 # remove NaNs
     n = len(arr)
     mean = arr.mean()
-    se = arr.std(ddof=1) / np.sqrt(n)
-    z = 1.96  # 95%
+    se = arr.std(ddof=1) / np.sqrt(n)               # standard error
+    z = 1.96                                         # 95% CI
     return mean, mean - z * se, mean + z * se
 
 
 
-# Domain-Specific Diagnostics
+# Domain‑specific diagnostics
 
 def lw_down_vs_humidity(df):
     """LW↓ vs surface specific humidity."""
@@ -90,7 +85,7 @@ def lw_down_vs_q850(df):
 
 def lw_up_vs_temperature(df):
     """LW↑ vs surface temperature."""
-    lw_up = df["strd"] - df["str"]
+    lw_up = df["strd"] - df["str"]                  # upward LW = down − net
     return regression_xy(df["Temp_Out_C"], lw_up)
 
 
@@ -100,13 +95,11 @@ def net_lw_vs_humidity(df):
 
 
 def humidity_binned_comparison(df, tmin=10, tmax=12):
-    """
-    Compare net LW for low vs high humidity within a temperature subset.
-    """
-    subset = df[(df["Temp_Out_C"] > tmin) & (df["Temp_Out_C"] < tmax)]
+    """Compare net LW for low vs high humidity within a temperature range."""
+    subset = df[(df["Temp_Out_C"] > tmin) & (df["Temp_Out_C"] < tmax)]  # temperature filter
 
-    low_q = subset[subset["q_surface"] < subset["q_surface"].quantile(0.25)]
-    high_q = subset[subset["q_surface"] > subset["q_surface"].quantile(0.75)]
+    low_q = subset[subset["q_surface"] < subset["q_surface"].quantile(0.25)]   # lowest 25%
+    high_q = subset[subset["q_surface"] > subset["q_surface"].quantile(0.75)]  # highest 25%
 
     low_mean, low_ci_low, low_ci_high = mean_ci(low_q["str"])
     high_mean, high_ci_low, high_ci_high = mean_ci(high_q["str"])
@@ -120,29 +113,32 @@ def humidity_binned_comparison(df, tmin=10, tmax=12):
 
 
 
-# Correlation Matrix
+# Correlation matrix
 
 def correlation_matrix(df):
-    """Compute correlation matrix."""
+    """Compute correlation matrix for numeric columns."""
     return df.corr()
 
 
-# Monthly Means
+
+# Monthly means
 
 def monthly_mean(df, time_col="time"):
-    """Compute monthly means."""
+    """Compute monthly mean values."""
     df = df.copy()
-    df["month"] = df[time_col].dt.to_period("M")
+    df["month"] = df[time_col].dt.to_period("M")     # convert to monthly period
     return df.groupby("month").mean(numeric_only=True)
 
 
-# Diurnal Cycle
+
+# Diurnal cycle
 
 def diurnal_cycle(df, time_col="time"):
-    """Compute hourly means."""
+    """Compute hourly mean values."""
     df = df.copy()
-    df["hour"] = df[time_col].dt.hour
+    df["hour"] = df[time_col].dt.hour               # extract hour of day
     return df.groupby("hour").mean(numeric_only=True)
+
 
 
 # Anomalies
@@ -151,24 +147,25 @@ def anomalies(df, time_col="time"):
     """Compute anomalies by removing monthly mean."""
     df = df.copy()
     df["month"] = df[time_col].dt.to_period("M")
-    monthly = df.groupby("month").transform("mean")
-    return df - monthly
+    monthly = df.groupby("month").transform("mean")   # monthly climatology
+    return df - monthly                               # anomaly = value − mean
 
 
-# Rolling Smoothing
+
+# Rolling smoothing
 
 def smooth(df, window=24):
-    """Rolling mean smoothing."""
+    """Apply rolling mean smoothing."""
     return df.rolling(window=window, center=True).mean()
 
 
 
-# Cloud-Mask Diagnostics
+# Cloud‑mask diagnostics
 
 def cloud_mask_stats(df, tcc_col="tcc"):
-    """Compute cloud cover statistics."""
+    """Compute simple cloud‑cover statistics."""
     return {
         "mean_tcc": df[tcc_col].mean(),
-        "clear_fraction": (df[tcc_col] < 0.1).mean(),
-        "cloudy_fraction": (df[tcc_col] > 0.5).mean()
+        "clear_fraction": (df[tcc_col] < 0.1).mean(),   # mostly clear
+        "cloudy_fraction": (df[tcc_col] > 0.5).mean()   # mostly cloudy
     }
