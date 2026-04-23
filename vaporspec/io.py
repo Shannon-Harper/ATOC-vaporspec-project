@@ -1,10 +1,23 @@
 # io.py
+"""
+Data loading and preprocessing utilities for vaporspec.
+
+This module handles:
+- loading CU ATOC station data
+- loading ERA5 pressure-level, single-level, and radiation datasets
+- merging CU ATOC with ERA5
+- computing surface specific humidity
+- filtering clear-sky conditions
+- preparing LW↓ maps for plotting
+"""
+
 import numpy as np
 import xarray as xr
 import pandas as pd
 
 
-# Boulder bounding box
+# Boulder bounding box (used for subsetting)
+
 BOULDER_DOMAIN = dict(
     north=40.1,
     south=39.9,
@@ -12,29 +25,36 @@ BOULDER_DOMAIN = dict(
     east=-104.9
 )
 
+
+# Load CU ATOC station CSV
+
 def load_cu_atoc(path):
-    """Load CU ATOC station CSV."""
-    df = pd.read_csv(path, parse_dates=["time"])
+    """Load CU ATOC station CSV file."""
+    df = pd.read_csv(path, parse_dates=["time"])   # parse timestamps
     return df
 
 
+# Load ERA5 datasets
+
 def load_era5(pressure_file, singlelevel_file, radiation_file, subset_to_boulder=True):
+    """Load ERA5 pressure-level, single-level, and radiation datasets."""
     p = xr.open_dataset(pressure_file)
     s = xr.open_dataset(singlelevel_file)
     r = xr.open_dataset(radiation_file)
 
-    # Pressure-level
-    q850 = p["q"].sel(pressure_level=850)
-    t850 = p["t"].sel(pressure_level=850)
+    # Pressure-level variables
+    q850 = p["q"].sel(pressure_level=850)          # specific humidity at 850 hPa
+    t850 = p["t"].sel(pressure_level=850)          # temperature at 850 hPa
 
-    # Single-level
-    sp  = s["sp"]
-    tcc = s["tcc"]
+    # Single-level variables
+    sp  = s["sp"]                                  # surface pressure
+    tcc = s["tcc"]                                 # total cloud cover
 
-    # Radiation
-    strd = r["strd"]   # downwelling
-    str_net = r["str"] # net LW
+    # Radiation variables
+    strd = r["strd"]                               # downwelling LW
+    str_net = r["str"]                             # net LW
 
+    # Combine into one dataset
     era = xr.Dataset(
         dict(
             q850=q850,
@@ -48,28 +68,24 @@ def load_era5(pressure_file, singlelevel_file, radiation_file, subset_to_boulder
     return era
 
 
-def merge_cu_era5(cu, era):
-    """
-    Merge CU ATOC dataframe with ERA5 dataset.
-    - Convert CU ATOC to UTC
-    - Rename ERA5 valid_time
-    - Inner merge on exact timestamps
-    """
-    cu = cu.copy()
-    cu["time_utc"] = cu["time"] + pd.Timedelta(hours=6)
+# Merge CU ATOC with ERA5
 
-    df_era = era.to_dataframe().reset_index()
+def merge_cu_era5(cu, era):
+    """Merge CU ATOC dataframe with ERA5 dataset on matching UTC timestamps."""
+    cu = cu.copy()
+    cu["time_utc"] = cu["time"] + pd.Timedelta(hours=6)   # convert local → UTC
+
+    df_era = era.to_dataframe().reset_index()             # flatten ERA5
     df_era = df_era.rename(columns={"valid_time": "time_utc"})
 
-    merged = cu.merge(df_era, on="time_utc", how="inner")
+    merged = cu.merge(df_era, on="time_utc", how="inner") # exact timestamp match
     return merged
 
 
+# Compute surface specific humidity
+
 def compute_surface_specific_humidity(df):
-    """
-    Compute surface specific humidity from dewpoint and surface pressure.
-    Matches original notebook.
-    """
+    """Compute surface specific humidity from dewpoint and surface pressure."""
     Td = df["Dew_Out_C"]
     p  = df["Pressure_hPa"]
 
@@ -86,24 +102,26 @@ def compute_surface_specific_humidity(df):
     return df
 
 
+# Clear-sky filter
 
 def filter_clear_sky(df):
     """Filter rows where total cloud cover < 0.3."""
     return df[df["tcc"] < 0.3]
 
 
+# Prepare LW↓ map fields
+
 def prepare_lw_down_map(era):
-    """
-    Extract lon, lat, LW↓ monthly mean for mapping.
-    """
+    """Extract lon, lat, and LW↓ monthly mean for mapping."""
     lw = era["strd"]
-    time_dim = "time" if "time" in lw.dims else "valid_time"
-    lw_mean = lw.mean(dim=time_dim)
+    time_dim = "time" if "time" in lw.dims else "valid_time"   # handle ERA5 variants
+    lw_mean = lw.mean(dim=time_dim)                            # monthly mean
 
     lon = lw_mean["longitude"].values
     lat = lw_mean["latitude"].values
     LW  = lw_mean.values
 
+    # Domain bounds
     lon_min = float(lon.min())
     lon_max = float(lon.max())
     lat_min = float(lat.min())
@@ -125,7 +143,6 @@ def prepare_lw_down_map(era):
     lon_max = lon_center + 0.5
     lat_min = lat_center - 0.5
     lat_max = lat_center + 0.5
-
 
     return lon, lat, LW, lon_min, lon_max, lat_min, lat_max
 

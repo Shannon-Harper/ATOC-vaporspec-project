@@ -1,8 +1,8 @@
 # utils.py
 """
 Utility functions shared across vaporspec modules:
-- Coordinate normalization and subsetting
 - Plot styling
+- Coordinate normalization and subsetting
 """
 
 import matplotlib.pyplot as plt
@@ -10,8 +10,10 @@ import matplotlib.pyplot as plt
 # Plot Style Helper
 
 def set_plot_style():
-    import seaborn as sns
+    """Apply consistent plot styling across all figures."""
+    import seaborn as sns                    # imported here to avoid global dependency
     sns.set(style="whitegrid", context="talk")
+
 
     plt.rcParams.update({
         "figure.figsize": (10, 6),
@@ -26,7 +28,7 @@ def set_plot_style():
 
 
 
-# Robust Region Subsetting
+# Region subsetting helper
 
 def subset_region(ds, north, south, west, east):
     """
@@ -34,8 +36,8 @@ def subset_region(ds, north, south, west, east):
 
     Automatically handles:
     - lat/lon ascending or descending
-    - single-point grids
     - alternate coordinate names (lat/lon, latitude/longitude, x/y)
+    - datasets without spatial coordinates
     """
 
     # Normalize coordinate names
@@ -55,9 +57,9 @@ def subset_region(ds, north, south, west, east):
         rename_map["x"] = "longitude"
 
     if rename_map:
-        ds = ds.rename(rename_map)
+        ds = ds.rename(rename_map)           # apply renaming
 
-    # If dataset has no spatial dimension (subset)
+    # If dataset has no spatial coordinates, return unchanged
 
     if "latitude" not in ds.coords or "longitude" not in ds.coords:
         return ds
@@ -78,8 +80,6 @@ def subset_region(ds, north, south, west, east):
         lon_slice = slice(west, east)
     else:                           # ascending
         lon_slice = slice(west, east)
-
     
     # Apply subset
-    
     return ds.sel(latitude=lat_slice, longitude=lon_slice)
