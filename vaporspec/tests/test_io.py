@@ -11,7 +11,7 @@ def test_load_cu_atoc():
 def test_load_era5():
     era = vs.load_era5(
         pressure_file="data/ERA5_sept2020/era5_pressure_humidity_temperature_sept2020.nc",
-        singlelevel_file="data/ERA5_sept2020/era5_singlelevel_cloud_sp_sept2020.nc",
+        cloud_file="data/ERA5_sept2020/era5_singlelevel_cloud_sp_sept2020.nc",
         radiation_file="data/ERA5_sept2020/era5_singlelevel_radiation_accum_sept2020.nc",
         subset_to_boulder=True
     )

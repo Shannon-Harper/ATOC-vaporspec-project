@@ -31,15 +31,21 @@ BOULDER_DOMAIN = dict(
 def load_cu_atoc(path):
     """Load CU ATOC station CSV file."""
     df = pd.read_csv(path, parse_dates=["time"])   # parse timestamps
+    
+    required = ["time", "Dew_Out_C", "Pressure_hPa"]
+    missing = [c for c in required if c not in df.columns]
+    if missing:
+        raise ValueError(f"Missing required CU ATOC columns: {missing}")
+
     return df
 
 
 # Load ERA5 datasets
 
-def load_era5(pressure_file, singlelevel_file, radiation_file, subset_to_boulder=True):
-    """Load ERA5 pressure-level, single-level, and radiation datasets."""
+def load_era5(pressure_file, cloud_file, radiation_file, subset_to_boulder=True):
+    """Load ERA5 pressure-level, surface-tcc, and radiation datasets."""
     p = xr.open_dataset(pressure_file)
-    s = xr.open_dataset(singlelevel_file)
+    s = xr.open_dataset(cloud_file)
     r = xr.open_dataset(radiation_file)
 
     # Pressure-level variables
@@ -65,6 +71,13 @@ def load_era5(pressure_file, singlelevel_file, radiation_file, subset_to_boulder
             str=str_net,
         )
     )
+
+    if subset_to_boulder:
+        era = era.sel(
+            latitude=slice(BOULDER_DOMAIN["south"], BOULDER_DOMAIN["north"]),
+            longitude=slice(BOULDER_DOMAIN["west"], BOULDER_DOMAIN["east"]),
+        )
+
     return era
 
 
@@ -86,6 +99,9 @@ def merge_cu_era5(cu, era):
 
 def compute_surface_specific_humidity(df):
     """Compute surface specific humidity from dewpoint and surface pressure."""
+    if "Dew_Out_C" not in df or "Pressure_hPa" not in df:
+        raise ValueError("Dew_Out_C and Pressure_hPa must be present.")
+    
     Td = df["Dew_Out_C"]
     p  = df["Pressure_hPa"]
 
@@ -104,9 +120,20 @@ def compute_surface_specific_humidity(df):
 
 # Clear-sky filter
 
-def filter_clear_sky(df):
-    """Filter rows where total cloud cover < 0.3."""
-    return df[df["tcc"] < 0.3]
+def filter_clear_sky(df, threshold=0.3):
+    """
+    Filter rows where total cloud cover < threshold.
+    Adds a 'cloud_mask' column:
+        1 = clear‑sky
+        0 = cloudy
+    """
+    if "tcc" not in df:
+        raise ValueError("Column 'tcc' (total cloud cover) is required.")
+
+    df = df.copy()
+    df["cloud_mask"] = (df["tcc"] < threshold).astype(int)
+    return df[df["cloud_mask"] == 1]
+
 
 
 # Prepare LW↓ map fields
@@ -120,12 +147,6 @@ def prepare_lw_down_map(era):
     lon = lw_mean["longitude"].values
     lat = lw_mean["latitude"].values
     LW  = lw_mean.values
-
-    # Domain bounds
-    lon_min = float(lon.min())
-    lon_max = float(lon.max())
-    lat_min = float(lat.min())
-    lat_max = float(lat.max())
 
     # Boulder coordinates
     boulder_lon = -105.27

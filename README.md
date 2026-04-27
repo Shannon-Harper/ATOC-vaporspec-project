@@ -54,22 +54,3 @@ cd ATOC-vaporspec-project
 pip install -e .
 
 ---
-
-## Quick Start Example
-
-A minimal example showing how to load data, merge CU ATOC with ERA5, and create a simple plot:
-
-```python
-import vaporspec as vs
-
-# Load datasets
-cu = vs.load_cu_atoc("cu_atoc.csv")
-era = vs.load_era5("era5_pressure.nc", "era5_singlelevel.nc", "era5_radiation.nc")
-
-# Merge CU ATOC with ERA5 on matching timestamps
-merged = vs.merge_cu_era5(cu, era)
-
-# Create a quick diagnostic plot
-fig = vs.scatter_lw_vs_q850(merged)
-fig.show()
-

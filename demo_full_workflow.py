@@ -1,4 +1,5 @@
-# test_vaporspec.py
+# python demo_full_workflow.py
+
 """
 Full end-to-end workflow for the vaporspec package.
 This script is intended for manual execution (not pytest).
@@ -16,6 +17,7 @@ It performs:
 import os
 import xarray as xr
 import matplotlib.pyplot as plt
+import numpy as np
 import vaporspec as vs
 
 
@@ -33,7 +35,7 @@ print(f"Loaded CU ATOC rows: {len(cu)}")
 
 era = vs.load_era5(
     pressure_file="data/ERA5_sept2020/era5_pressure_humidity_temperature_sept2020.nc",
-    singlelevel_file="data/ERA5_sept2020/era5_singlelevel_cloud_sp_sept2020.nc",
+    cloud_file="data/ERA5_sept2020/era5_singlelevel_cloud_sp_sept2020.nc",
     radiation_file="data/ERA5_sept2020/era5_singlelevel_radiation_accum_sept2020.nc",
     subset_to_boulder=True
 )
@@ -130,19 +132,66 @@ print_reg("LW↑ vs Temp", reg_lwup)
 reg_net = vs.net_lw_vs_humidity(clear)
 print_reg("Net LW vs q_surface", reg_net)
 
-# Cloud stats
-cloud_stats = vs.cloud_mask_stats(merged)
-print(f"\nCloud stats: {cloud_stats}")
+print("\n=== Additional Physical + Statistical Tools ===")
 
-# Diurnal + monthly
+
+# --- Core physics ---
+print("\n--- Core Physics ---")
+
+sample_T = 290.0  # K
+sample_q = 0.008  # kg/kg
+sample_RH = 0.45
+sample_p = 90000  # Pa
+
+print(f"Saturation vapor pressure at {sample_T} K: {vs.saturation_vapor_pressure(sample_T):.2f} Pa")
+e = vs.vapor_pressure_from_rh(sample_T, sample_RH)
+print(f"Vapor pressure from RH={sample_RH}: {e:.2f} Pa")
+print(f"Mixing ratio: {vs.mixing_ratio(e, sample_p):.4e} kg/kg")
+print(f"Specific humidity: {vs.specific_humidity(e, sample_p):.4e} kg/kg")
+print(f"Clear-sky LW↓ (Brutsaert): {vs.clear_sky_lw_down(sample_T, sample_q):.2f} W/m²")
+print(f"LW↑ from temperature: {vs.lw_up_from_temp(sample_T):.2f} W/m²")
+
+# --- Regression tools ---
+print("\n--- Regression Tools ---")
+
+reg_simple = vs.regression_xy(clear["q_surface"], clear["strd"])
+print(f"Simple regression r²: {reg_simple['r2']:.3f}")
+
+X = np.column_stack([clear["q_surface"], clear["Temp_Out_C"]])
+y = clear["strd"]
+reg_multi = vs.regression_multi(X, y)
+print(f"Multivariate regression r²: {reg_multi['r2']:.3f}")
+
+# --- Correlation matrix ---
+print("\n--- Correlation Matrix ---")
+corr = vs.correlation_matrix(clear[["q_surface", "q850", "Temp_Out_C", "strd", "str"]])
+print(corr)
+# --- Cloud stats ---
+print("\n--- Cloud Stats ---")
+cloud_stats = vs.cloud_mask_stats(merged)
+print(f"{cloud_stats}")
+
+# --- Diurnal + monthly ---
+print("\n--- Diurnal + Monthly ---")
 diurnal = vs.diurnal_cycle(merged)
 monthly = vs.monthly_mean(merged)
-print("Computed diurnal and monthly means.")
+print("\nComputed diurnal and monthly means.")
 
-# Humidity-binned comparison
+# --- Humidity-binned comparison ---
+print("\n--- Humidity-Binned Comparison (10–12°C) ---")
 hb = vs.humidity_binned_comparison(merged)
-print(f"Humidity-binned comparison (10–12°C): low={hb['low_mean']:.3e}, high={hb['high_mean']:.3e}")
+print(f"low={hb['low_mean']:.3e}, high={hb['high_mean']:.3e}")
 
+# --- Anomalies + smoothing ---
+print("\n--- Anomalies + Smoothing ---")
+anom = vs.anomalies(merged)
+smooth_temp = vs.smooth(merged["Temp_Out_C"], window=24)
+print("Computed anomalies and smoothed temperature series.")
+
+# --- Confidence interval ---
+print("\n--- Confidence Interval Example ---")
+mean_val, ci_low, ci_high = vs.mean_ci(clear["strd"])
+print(f"LW↓ mean={mean_val:.2f}, CI=({ci_low:.2f}, {ci_high:.2f})")
 
 # ============================================================
 # Save figures + statistics summary

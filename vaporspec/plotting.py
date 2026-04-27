@@ -17,7 +17,7 @@ import cartopy.feature as cfeature               # coastlines, borders, states
 import seaborn as sns                            # regression plots
 
 from .utils import set_plot_style                # shared plot styling
-
+from .analysis import humidity_binned_comparison
 
 
 # Full North America LW↓ map
@@ -206,22 +206,22 @@ def scatter_lw_vs_q_surface_fit(df, title="LW↓ vs q_surface (Linear Fit)"):
 def humidity_binned_barplot(df, tmin=10, tmax=12):
     """Bar plot comparing net LW for low vs high humidity."""
     set_plot_style()
-    subset = df[(df["Temp_Out_C"] > tmin) & (df["Temp_Out_C"] < tmax)]  # temperature filter
 
-    low_q = subset[subset["q_surface"] < subset["q_surface"].quantile(0.25)]
-    high_q = subset[subset["q_surface"] > subset["q_surface"].quantile(0.75)]
+    stats = humidity_binned_comparison(df, tmin=tmin, tmax=tmax)
 
-    from .core import mean_ci
-    low_mean, low_ci_low, low_ci_high = mean_ci(low_q["str"])
-    high_mean, high_ci_low, high_ci_high = mean_ci(high_q["str"])
+    low_mean = stats["low_mean"]
+    high_mean = stats["high_mean"]
+
+    low_lo, low_hi = stats["low_ci"]
+    high_lo, high_hi = stats["high_ci"]
 
     means = [low_mean, high_mean]
-    ci_lower = [low_mean - low_ci_low, high_mean - high_ci_low]
-    ci_upper = [low_ci_high - low_mean, high_ci_high - high_mean]
+    err_low = [low_mean - low_lo, high_mean - high_lo]
+    err_high = [low_hi - low_mean, high_hi - high_mean]
 
     fig = plt.figure(figsize=(8, 6))
     plt.bar(["Low Humidity", "High Humidity"], means,
-            yerr=[ci_lower, ci_upper], capsize=8,
+            yerr=[err_low, err_high], capsize=8,
             color=["skyblue", "salmon"])
     plt.ylabel("Net LW Radiation (W/m²)")
     plt.title(f"Net LW Radiation for Low vs High Humidity ({tmin}–{tmax}°C)")

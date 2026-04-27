@@ -31,10 +31,13 @@ def beer_lambert(q, k, m):
 # Broadband LW transmittance approximation
 
 def broadband_transmittance(q, T):
-    """Approximate broadband LW transmittance (simple placeholder model)."""
+    """Approximate broadband LW transmittance.
+    This is a placeholder model capturing:
+    - exponential humidity dependence
+    - weak temperature dependence"""
     a = 120.0
     b = 0.1
-    return np.exp(-a * q) * (T / 300.0) ** b   # humidity + temperature dependence
+    return np.exp(-a * q) * (T / 300.0) ** b
 
 
 
@@ -61,7 +64,7 @@ def vapor_pressure_from_rh(T, RH):
 def mixing_ratio(e, p):
     """Compute mixing ratio (kg/kg)."""
     epsilon = 0.622
-    return epsilon * e / (p - e)        # standard formula
+    return epsilon * e / (p - e)
 
 
 
@@ -69,8 +72,8 @@ def mixing_ratio(e, p):
 
 def specific_humidity(e, p):
     """Compute specific humidity (kg/kg)."""
-    w = mixing_ratio(e, p)              # mixing ratio
-    return w / (1 + w)                  # convert to specific humidity
+    w = mixing_ratio(e, p)
+    return w / (1 + w)                  # mixing ratio to specific humidity
 
 
 
@@ -93,7 +96,7 @@ def lw_up_from_temp(T):
 
 
 
-# Linear regression (original version)
+# Linear regression
 
 def regression(x, y):
     """Simple linear regression: y = a*x + b."""
@@ -111,12 +114,17 @@ def regression(x, y):
 
 
 
-# Confidence interval helper (original version)
+# Confidence interval helper
 
 def mean_ci(data, confidence=0.95):
     """Compute mean and confidence interval."""
     a = np.array(data)                 # convert to numpy
     n = len(a)
+
+    if n < 2:
+        m = float(a.mean()) if n == 1 else np.nan
+        return m, m, m
+    
     m = np.mean(a)                     # sample mean
     se = np.std(a, ddof=1) / np.sqrt(n)  # standard error
     h = se * t.ppf((1 + confidence) / 2., n - 1)  # margin of error
