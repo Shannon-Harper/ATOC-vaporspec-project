@@ -18,7 +18,7 @@ import seaborn as sns                            # regression plots
 
 from .utils import set_plot_style                # shared plot styling
 from .analysis import humidity_binned_comparison
-
+from .analysis import diurnal_cycle
 
 # Full North America LW↓ map
 
@@ -259,4 +259,22 @@ def plot_diurnal_cycle(df, variable="strd"):
     # 3. Plot the hourly mean of the selected variable.
     # 4. Label axes and add a title.
     # 5. Return the figure.
-    pass
+    hourly_means = diurnal_cycle(df)
+
+    # Check if a time column exists
+    if "time" in hourly_means.columns:
+        time_col = hourly_means["time"]
+    else:
+        time_col = hourly_means.index
+
+    fig, ax = plt.subplots(figsize=(10,6))
+
+    ax.plot(time_col, hourly_means[variable], color="skyblue")
+    ax.set_xlabel("Hour")
+    ax.set_ylabel(f"{variable}")
+    ax.set_title(f"Hourly Mean {variable}")
+    
+    fig.autofmt_xdate() # Keeps date labels readable
+    plt.tight_layout()
+
+    return fig
