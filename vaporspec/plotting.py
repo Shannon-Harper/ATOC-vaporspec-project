@@ -255,8 +255,19 @@ def plot_diurnal_cycle(df, variable="strd"):
     # TODO: Contributor will implement this function.
     # Steps:
     # 1. Call vaporspec.analysis.diurnal_cycle(df) to compute hourly means.
+    from analysis import diurnal_cycle
+    hourly_means = diurnal_cycle(df)
+
     # 2. Create a 10x6 matplotlib figure.
+    fig, ax = plt.subplots(figsize=(10,6))
+
     # 3. Plot the hourly mean of the selected variable.
+    ax.plot(hourly_means.index, hourly_means[variable], color='black')
+
     # 4. Label axes and add a title.
+    ax.set_title(f"Hourly Mean of {variable}")
+    ax.set_ylabel(f"{variable}")
+    ax.set_xlabel("Hour of Day")
+    
     # 5. Return the figure.
-    pass
+    plt.show()
